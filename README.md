@@ -16,7 +16,3 @@
   
 ### Streamlit app
 See the app [here](https://binomial-model-option-pricing-k.streamlit.app/).
-
-Inspired by: [Kion Consulting](https://kion.co.za/)
-#####
-![](https://github.com/Nkocientio/Binomial-Options-Pricing-Model/blob/main/files/Kion_logo.png)
