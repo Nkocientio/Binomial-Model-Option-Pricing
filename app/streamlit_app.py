@@ -78,7 +78,7 @@ def main():
     
     style = st.sidebar.selectbox("Style", ['American', 'Asian', 'Bermudan', 'Compound', 'European'])
     option_type = st.sidebar.selectbox("Option Type", ['Call', 'Put'])
-    N = st.sidebar.number_input("Number of Time Steps (N)", min_value=1, max_value=6000, value=10) # max_value to be increases...
+    N = st.sidebar.number_input("Number of Time Steps (N)", min_value=1, max_value=10000, value=1000) # max_value to be increases...
     
     avg_what, avg_method = 'Asset', 'Geometric'
     if style == 'Asian':
@@ -94,7 +94,7 @@ def main():
             
     elif style == 'Compound':
         st.write("Compound option types (Call on Call), (Call on Put), (Put on Call) and (Put on Put).")
-        st.markdown(f"About {style} options [watch this](https://youtu.be/CC9JWooTGrQ?si=6mnoGL6am7MUvq9e)")
+        st.markdown(f"About {style} options [watch this.](https://youtu.be/CC9JWooTGrQ?si=6mnoGL6am7MUvq9e)")
         compound_optTyp = st.sidebar.selectbox(f'{option_type} on', ['Call', 'Put'])
         compound_K1 = st.sidebar.number_input('Enter strike K1', min_value=0.0,value =0.0) # max should be K
         compound_n = st.sidebar.number_input('Enter exercise step of T1', min_value=1, max_value = N) 
@@ -106,7 +106,7 @@ def main():
     else:
         double_style = style
         file_name = f"{style}_{option_type} {N} steps.xlsx"
-    st.markdown(f"About {double_style} options [read here](https://corporatefinanceinstitute.com/resources/derivatives/american-vs-european-vs-bermudan-options/)")
+    st.markdown(f"About {double_style} options [read here.](https://corporatefinanceinstitute.com/resources/derivatives/american-vs-european-vs-bermudan-options/)")
     
     S = st.sidebar.number_input("Spot Price (S)", min_value=0.001, value=100.0)
     K = st.sidebar.number_input("Strike Price (K)", min_value=0.01*S, value=99.0)
