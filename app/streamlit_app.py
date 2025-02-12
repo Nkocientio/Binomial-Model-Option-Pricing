@@ -76,9 +76,9 @@ def main():
     st.sidebar.write(random.choice(['Acentio','Nkocie', 'Nkosenhle','Nkosembi','Nkosendala','Nkosentsha', 'Khathazile'])) 
     st.sidebar.header("Model Inputs")
     
-    style = st.sidebar.selectbox("Style", ['American', 'Asian', 'Bermudan', 'Compound', 'European'])
+    style = st.sidebar.selectbox("Style", ['European','American', 'Asian', 'Bermudan', 'Compound'])
     option_type = st.sidebar.selectbox("Option Type", ['Call', 'Put'])
-    N = st.sidebar.number_input("Number of Time Steps (N)", min_value=1, max_value=10000, value=1000) # max_value to be increases...
+    N = st.sidebar.number_input("Number of Time Steps (N)", min_value=1, max_value=6000, value=100) # max_value to be increases...
     
     avg_what, avg_method = 'Asset', 'Geometric'
     if style == 'Asian':
