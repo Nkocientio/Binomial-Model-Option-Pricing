@@ -78,11 +78,11 @@ def main():
     
     style = st.sidebar.selectbox("Style", ['European','American', 'Asian', 'Bermudan', 'Compound'])
     option_type = st.sidebar.selectbox("Option Type", ['Call', 'Put'])
-    N = st.sidebar.number_input("Number of Time Steps (N)", min_value=1, max_value=6000, value=np.random.randint(1,16)) # max_value to be increases...
+    N = st.sidebar.number_input("Number of Time Steps (N)", min_value=1, max_value=6000, value=12) # max_value to be increases...
     
     avg_what, avg_method = 'Asset', 'Geometric'
     if style == 'Asian':
-        st.write("Asian options look at the average of (asset or strike) overtime.")
+        st.write("Asian options look at the average of the asset or strikes over time.")
         st.markdown(f"About {style} options [watch this](https://youtu.be/rsyBxMtnn9A?si=C5_xG9Z6R6hNFo2y)")
         avg_what = st.sidebar.selectbox("Average What", ['Asset', 'Strike'])
         avg_method = st.sidebar.selectbox("Average Method", ['Arithmetic', 'Geometric'])
