@@ -78,7 +78,7 @@ def main():
     
     style = st.sidebar.selectbox("Style", ['European','American', 'Asian', 'Bermudan', 'Compound'])
     option_type = st.sidebar.selectbox("Option Type", ['Call', 'Put'])
-    N = st.sidebar.number_input("Number of Time Steps (N)", min_value=1, max_value=6000, value=100) # max_value to be increases...
+    N = st.sidebar.number_input("Number of Time Steps (N)", min_value=1, max_value=6000, value=np.random.randint(1,16)) # max_value to be increases...
     
     avg_what, avg_method = 'Asset', 'Geometric'
     if style == 'Asian':
