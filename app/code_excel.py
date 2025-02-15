@@ -31,7 +31,7 @@ def summary(S0, K, T, r,q, sigma, optionType, style, steps, upFactor, uProb, pri
     ws.column_dimensions['B'].width = 19
     return wb
 
-def BermudanDates(wb,style, dates):
+def Bermudan_dates(wb,style, dates):
     r = 7 if style == 'Compound' else 0
     ws = wb['Binomial Tree']
 
@@ -40,8 +40,8 @@ def BermudanDates(wb,style, dates):
     ws[f'A{8+r}'].fill = PatternFill(start_color="FFE699", end_color="FFE699", fill_type="solid")
     
     for i in range(len(dates)):
-        ws[f"A{9+r+i}"] = dates[i]
-        ws[f"A{9+r+i}"].fill = PatternFill(start_color="D0CECE", end_color="D0CECE", fill_type="solid")
+        ws[f'A{9+r+i}'] = dates[i]
+        ws[f'A{9+r+i}'].fill = PatternFill(start_color="D0CECE", end_color="D0CECE", fill_type="solid")
         
     ws.column_dimensions['A'].width = 13
     return wb
@@ -55,7 +55,7 @@ def number_to_letter(n):
         letters.append(chr(65 + remainder))
     return ''.join(reversed(letters))
 
-def print_excel(style, optionType, tree, isExercised, steps, upFactor, uProb, strikes, anotherStyle, dividends, dt, onCallPut, compoundStrike, compoundStep, avgType, avgWhat, S0, K, T, r,q, sigma, price, exerciseDates, divType):
+def print_excel(style, optionType,asset_values,option_values, isExercised, steps, upFactor, uProb, strikes, anotherStyle, dividends, dt, onCallPut, compoundStrike, compoundT1, avgType, avgWhat, S0, K, T, r,q, sigma, price, exerciseDates, divType):
     
     optionC = PatternFill(start_color="A9D08E", end_color="A9D08E", fill_type="solid")
     assetC = PatternFill(start_color="FFE699", end_color="FFE699", fill_type="solid")
@@ -68,12 +68,13 @@ def print_excel(style, optionType, tree, isExercised, steps, upFactor, uProb, st
     startR, startC = 4, 3
     colShifter = 0
     underlying = "Asset"
+    compoundStep = max(1, int(compoundT1/dt))
 
     if style == 'Asian':
         ws['A1'] = f'{avgType} {avgWhat} Averaging'
         ws['A1'].font = Font(italic=True, size=10)
     elif style == 'Compound':
-        results = [[f'{optionType} on','K_c','T1 (year)','Style'],[onCallPut,compoundStrike,compoundStep * dt,anotherStyle]]
+        results = [[f'{optionType} on','K_c','T1 (year)','Style'],[onCallPut,compoundStrike,compoundT1,anotherStyle]]
         for i in range(8,12):
             ws[f'A{i}'] = results[0][i-8]
             ws[f'A{i}'].fill = greyC
@@ -89,25 +90,26 @@ def print_excel(style, optionType, tree, isExercised, steps, upFactor, uProb, st
         underlying = f'{underlying}(option)'
 
     if style == 'Bermudan' or anotherStyle == 'Bermudan':
-        wb = BermudanDates(wb,style, exerciseDates)
+        wb = Bermudan_dates(wb,style, exerciseDates)
         ws = wb['Binomial Tree']
         
-    rowRef = steps
+    emptyRows = steps
     for j in range(steps + 1):
         col = number_to_letter(j+startC)
         exerciseColor = '00B0F0' if (style == 'Compound' and (j <= compoundStep)) else 'FF0000'
         for i in range(j+1):
+            currentRow = startR + emptyRows + 2*i
             # Asset
-            ws[f'{col}{2*i+startR+rowRef}'] = tree[2*i+rowRef,j]
-            ws[f'{col}{2*i+startR+rowRef}'].fill = assetC
+            ws[f'{col}{currentRow}'] = asset_values[i,j]
+            ws[f'{col}{currentRow}'].fill = assetC
             
             # Option
-            ws[f'{col}{2*i+startR+rowRef+1}'] = tree[2*i+rowRef+1,j]
-            ws[f'{col}{2*i+startR+rowRef+1}'].fill = optionC
-            if isExercised[2*i + rowRef+1, j]:
-                ws[f'{col}{2*i+startR+rowRef+1}'].font = Font(color=exerciseColor)
+            ws[f'{col}{currentRow+1}'] = option_values[i,j]
+            ws[f'{col}{currentRow+1}'].fill = optionC
+            if isExercised[i, j]:
+                ws[f'{col}{currentRow+1}'].font = Font(color=exerciseColor)
 
-        rowRef -= 1
+        emptyRows -= 1
         # Year row
         ws[f'{col}{startR + 3 + 2 * steps}'] = j*dt
         ws[f'{col}{startR + 3 + 2 * steps}'].fill = greyC
