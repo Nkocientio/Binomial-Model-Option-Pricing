@@ -1,3 +1,5 @@
+import random
+import streamlit as st
 from binomial_class import *
 
 def interval_dates(now,expire,freq,yrs):
@@ -21,7 +23,7 @@ def get_dates(freqency,yrs):
     expire_date = today + timedelta(days=365*yrs)
     if 'b_dates' not in st.session_state:
         st.session_state.b_dates = np.array([expire_date], dtype='datetime64[D]')
-    if freqency == 'Manual':
+    if freqency == 'Customized':
         with st.form(key='bermuda_dates'):
             dt = st.date_input('Enter the exercise date', value =today, min_value=today, max_value = expire_date)
             
@@ -78,12 +80,13 @@ def main():
     
     style = st.sidebar.selectbox("Style", ['European','American', 'Asian', 'Bermudan', 'Compound'])
     option_type = st.sidebar.selectbox("Option Type", ['Call', 'Put'])
-    N = st.sidebar.number_input("Number of Time Steps (N)", min_value=1, max_value=6000, value=12) # max_value to be increases...
+    N = st.sidebar.number_input("Number of Time Steps (N)", min_value=1, max_value=10000, value=12) # max_value to be increased...
+    T = st.sidebar.number_input("Time to Maturity (T)", min_value=0.0001, value=1.0)
     
     avg_what, avg_method = 'Asset', 'Geometric'
     if style == 'Asian':
         st.write("Asian options look at the average of the asset or strikes over time.")
-        st.markdown(f"About {style} options [watch this](https://youtu.be/rsyBxMtnn9A?si=C5_xG9Z6R6hNFo2y)")
+        st.markdown(f"About {style} options watch [this.](https://youtu.be/rsyBxMtnn9A?si=C5_xG9Z6R6hNFo2y)")
         avg_what = st.sidebar.selectbox("Average What", ['Asset', 'Strike'])
         avg_method = st.sidebar.selectbox("Average Method", ['Arithmetic', 'Geometric'])
         if avg_what == 'Strike':
@@ -94,10 +97,10 @@ def main():
             
     elif style == 'Compound':
         st.write("Compound option types (Call on Call), (Call on Put), (Put on Call) and (Put on Put).")
-        st.markdown(f"About {style} options [watch this.](https://youtu.be/CC9JWooTGrQ?si=6mnoGL6am7MUvq9e)")
+        st.markdown(f"About {style} options watch [this.](https://youtu.be/CC9JWooTGrQ?si=6mnoGL6am7MUvq9e)")
         compound_optTyp = st.sidebar.selectbox(f'{option_type} on', ['Call', 'Put'])
         compound_K1 = st.sidebar.number_input('Enter strike K1', min_value=0.0,value =0.0) # max should be K
-        compound_n = st.sidebar.number_input('Enter exercise step of T1', min_value=1, max_value = N) 
+        compound_T1 = st.sidebar.number_input('Compound option expire (T1)', min_value=0.0, max_value = T) # max T
     
     if style in ['Asian', 'Compound']:
         double_style = st.sidebar.selectbox("Exercise Style", ['American', 'Bermudan', 'European'])
@@ -106,17 +109,16 @@ def main():
     else:
         double_style = style
         file_name = f"{style}_{option_type} {N} steps.xlsx"
-    st.markdown(f"About {double_style} options [read here.](https://corporatefinanceinstitute.com/resources/derivatives/american-vs-european-vs-bermudan-options/)")
+    st.markdown(f"About {double_style} options read [here.](https://corporatefinanceinstitute.com/resources/derivatives/american-vs-european-vs-bermudan-options/)")
     
     S = st.sidebar.number_input("Spot Price (S)", min_value=0.001, value=100.0)
     K = st.sidebar.number_input("Strike Price (K)", min_value=0.01*S, value=99.0)
-    T = st.sidebar.number_input("Time to Maturity (T)", min_value=0.0001, value=1.0)
     sigma = st.sidebar.number_input("Volatility (σ)", min_value=0.001,max_value=1.0, value=0.2)
     r = st.sidebar.number_input("Risk-Free Rate (r)", min_value=0.0, value=0.06)
 
     bermudan_dates = np.array([datetime.now()], dtype='datetime64[D]' )
     if style == 'Bermudan' or double_style == 'Bermudan':
-        exercised_ = st.sidebar.selectbox('Enter exercise_dates', ['Half-Yearly','Monthly','Quarterly','Anually','Manual'])
+        exercised_ = st.sidebar.selectbox('Enter exercise_dates', ['Half-Yearly','Monthly','Quarterly','Anually','Customized'])
         get_dates(exercised_,T)
         bermudan_dates = st.session_state.b_dates
     
@@ -143,9 +145,9 @@ def main():
         
         with st.spinner('Calculating...'):
             if style == 'Compound':
-                option.compound_option(compound_optTyp,compound_K1,compound_n)
+                option.compound_option(compound_optTyp,compound_K1,compound_T1)
             else:
-                option.build_tree()
+                option.calculate_option_values()
 
             st.markdown(f"#### Value of {style} {option_type}: {option.price:.6f}")
             if style == 'European':
