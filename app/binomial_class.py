@@ -1,8 +1,6 @@
 import math
-import random
 import numpy as np
 import pandas as pd
-import streamlit as st
 from scipy.stats import norm
 from datetime import datetime,timedelta
 from code_excel import print_excel,get_workbook_as_bytes
@@ -39,18 +37,18 @@ class Binomial_Model():
         sorted_indices = np.argsort(self.divs[0, :]) 
         self.divs = self.divs[:, sorted_indices]
 
-        self.stock_tree()
+        self.calculate_stock_values()
 
-    def stock_tree(self):
+    def calculate_stock_values(self):
         self.strikes = np.full(self.N+1,self.K)
-        self.stock = np.zeros((self.N+1,self.N+1))
+        self.asset_values = np.zeros((self.N+1,self.N+1))
         self.S0 = max(self.S0 - np.sum(self.divs[1:,:]), 0.0)
         self.div_sum = np.zeros(self.N+1)
         
         u = self.u
         if self.style == 'Asian':
             if self.avg_style == 'Arithmetic':
-                self.agg_stock = self.stock.copy()
+                self.agg_stock = self.asset_values.copy()
             else:
                 u = np.sqrt(u)
             scalar_s = self.S0*u**self.N
@@ -62,10 +60,10 @@ class Binomial_Model():
 
             #powers of the asset 
             powers = np.arange(j ,-j-1,-2)
-            asset_values = self.S0*u**powers
+            asset_col = self.S0*u**powers
             
-            asset_values += self.div_sum[j] 
-            self.stock[0:j+1,j] = asset_values
+            asset_col += self.div_sum[j] 
+            self.asset_values[0:j+1,j] = asset_col
             
             if self.style == 'Asian':
                 if self.avg_what == 'Asset':
@@ -77,14 +75,13 @@ class Binomial_Model():
         
     def asian_stock(self,j,scalar_s):
         # Asset average, scalar_s is just used to prevent the overflow error
-        # At node (i,j) there are num_paths ways to get there, also considering the length (j+1). (j for col, and for row)
+        # At node (i,j) there are num_paths ways to get there, also considering the length (j+1). (j for col, and i for row)
         row_ref = j
         for i in range(j+1):
-            stock = self.stock[i,j] / scalar_s
+            stock = self.asset_values[i,j] / scalar_s
             if i == 0:
                 num_paths = 1
                 self.agg_stock[i,j] = self.agg_stock[ i,max(0,j-1)] + stock
-                
             elif i == j:
                 num_paths = 1
                 self.agg_stock[i,j] = self.agg_stock[ i-1,j-1 ] + stock
@@ -93,122 +90,90 @@ class Binomial_Model():
                 num_paths = math.comb(j,row_ref)
                 self.agg_stock[i,j] = self.agg_stock[ i-1,j-1 ] + self.agg_stock[ i,j-1 ] + num_paths*stock
             
-            self.stock[i,j] = scalar_s * self.agg_stock[i,j]/( (j+1)*num_paths )
+            self.asset_values[i,j] = scalar_s * self.agg_stock[i,j]/( (j+1)*num_paths )
 
     
-    def build_tree(self):
+    def calculate_option_values(self):
         N = self.N
         self.can_exercise = self.exerciseOn(N,self.double_style)
+       
+        calculated_values = np.maximum(self.epsilon*( self.asset_values[:,-1] - self.strikes[-1] ),0.0)
         
-        asset_values = self.stock[:,-1]
-        terminal_values = np.maximum(self.epsilon*(asset_values-self.strikes[-1]),0.0)
-        
-        tree = np.empty((2*N+2,N+1),dtype=object)
-        self.font_colors = np.full( (2*N+2,N+1) ,False, dtype=bool) # indicator: if the holder can exercise
-        
-        tree[0::2,N] = asset_values
-        tree[1::2,N] = terminal_values
+        self.option_values = np.zeros((N+1,N+1))
+        self.option_exercised = np.full( (N+1,N+1) ,False, dtype=bool) # indicator: if the holder can exercise
 
-        self.font_colors[1::2,N] = True & (terminal_values > 0.0)
+        self.option_values[:,-1] = calculated_values
+        self.option_exercised[:,-1] = True & (calculated_values > 0.0)
         
         for j in reversed(range(N)):
-            asset_values = self.stock[0:j+1,j]
-            
-            row_1 = terminal_values[:j+1]
-            row_2 = terminal_values[1:j+2]
+            row_1 = calculated_values[:j+1]
+            row_2 = calculated_values[1:j+2]
             rows_2d = np.array([row_1, row_2])
             
             values = self.probs.dot(rows_2d)
 
-            # lb: lowerBound, ub: upperBound
-            lb = N-j
-            ub = 2*N+2-lb
             if self.can_exercise[j]:
-                intrinsic = np.maximum( self.epsilon*(asset_values-self.strikes[:j+1]), 0.0)
-                terminal_values = np.maximum(intrinsic,values*self.df)
-
-                exercise = np.full((2*j+2), False, dtype = bool)
-                exercise[1::2] = (intrinsic == terminal_values) & (intrinsic > 0)
-                self.font_colors[lb:ub,j] = exercise
+                intrinsic = np.maximum( self.epsilon*( self.asset_values[:j+1,j] - self.strikes[:j+1] ), 0.0)
+                calculated_values = np.maximum(intrinsic,values*self.df)
+                self.option_exercised[:j+1,j] = (intrinsic == calculated_values) & (intrinsic > 0)
             else:
-                terminal_values = values*self.df
+                calculated_values = values*self.df
         
-            col = np.zeros(2*j+2)
-            col[0::2] = asset_values
-            col[1::2] = terminal_values
-        
-            tree[lb:ub,j] = col
+            self.option_values[:j+1,j] = calculated_values
             
-        self.price = terminal_values[0]
-        self.tree  = tree
+        self.price = calculated_values[0]
         
-    def compound_option(self,option_two,K1,m):
+    def compound_option(self,option_two,K1,T1):
         self.epsilon = -1 if option_two == 'Put' else 1
-        self.option_two, self.K1, self.n1 = option_two, K1, m
-        self.build_tree()
+        self.option_two, self.K1, self.T1 = option_two, K1, T1
+        
+        self.calculate_option_values()
 
-        N = self.N
-        lb = N-m
-        ub = 2*N+2-lb
+        m = max(1, int(self.T1/self.dt))
+        self.asset_values[:m+1,m] = self.option_values[:m+1,m]
+        calculated_values = np.maximum(self.epsilon*( self.asset_values[:m+1,m] - self.K1 ), 0.0)
+        self.option_values[:m+1,m] = calculated_values
         
-        asset_values = self.tree[lb:ub,m][1::2]
-        terminal_values = np.maximum(self.epsilon*(asset_values-K1),0.0)
-
-        col = np.zeros(2*m+2)
-        col[0::2] = asset_values
-        col[1::2] = terminal_values
-        
-        self.tree[lb:ub,m] = col
-        
-        exercise = np.full((2*m+2), False, dtype = bool)
-        exercise[1::2] = True & (terminal_values > 0)
-        self.font_colors[lb:ub,m] = exercise
+        self.option_exercised[:m+1,m] = True & (calculated_values > 0)
         
         for j in reversed(range(m)):
-            lb, ub = N-j , 2*N+2-lb
-            asset_values = self.tree[lb:ub,j][1::2]
+            self.asset_values[:j+1,j] = self.option_values[:j+1,j]
             
-            row_1 = terminal_values[:j+1]
-            row_2 = terminal_values[1:j+2]
+            row_1 = calculated_values[:j+1]
+            row_2 = calculated_values[1:j+2]
             array_2d = np.array([row_1, row_2])
             
             values = self.probs.dot(array_2d)
             
             if self.can_exercise[j]:
-                intrinsic = np.maximum( self.epsilon*(asset_values-K1), 0.0)
-                terminal_values = np.maximum(intrinsic,values*self.df)
+                intrinsic = np.maximum( self.epsilon*( self.asset_values[:j+1,j] - self.K1 ), 0.0)
+                calculated_values = np.maximum(intrinsic, values*self.df)
 
-                exercise = np.full((2*j+2), False, dtype = bool)
-                exercise[1::2] = (intrinsic == terminal_values) & (intrinsic > 0)
-                self.font_colors[lb:ub-1,j] = exercise
+                self.option_exercised[:j+1,j] = (intrinsic == calculated_values) & (intrinsic > 0)
             else:
-                terminal_values = values*self.df
+                calculated_values = values*self.df
         
-            col = np.zeros(2*j+2)
-            col[0::2] = asset_values
-            col[1::2] = terminal_values
-        
-            self.tree[lb:ub-1,j] = col
+            self.option_values[:j+1,j] = calculated_values
             
-        self.price = terminal_values[0]
+        self.price = calculated_values[0]
         
     def exerciseOn(self,n,style):
         self.b_dates = []
         if style == 'American':
             return np.full(n, True, dtype=bool)
         elif style == 'Bermudan':
-            self.exercise_dates = np.array(self.exercise_dates, dtype='datetime64[D]')
             arr = np.full(n+1, False, dtype=bool)
             today = np.datetime64(datetime.now().strftime('%Y-%m-%d'))
-            for dt in self.exercise_dates:
-                delta = (dt - today) 
-                yrs = delta.astype('timedelta64[D]').astype(int) / 365
-                node = int(yrs/self.dt )
+            self.exercise_dates = np.array(self.exercise_dates, dtype='datetime64[D]')
+            for date in self.exercise_dates:
+                days = (date - today) 
+                yrs = days.astype('timedelta64[D]').astype(int) / 365
+                node = int(yrs/self.dt)
                 arr[min(node,n)] = True
-                self.b_dates.append(f"{dt.astype(datetime).strftime('%d %b %Y')} ({node})")
+                self.b_dates.append(f"{date.astype(datetime).strftime('%d %b %Y')} ({node})")
             return arr
         else:
-            return np.full(n, False, dtype=bool)
+            return np.full(n, False, dtype=bool)  #Eur style
 
     def black_scholes(self):
         discount = np.exp(-self.r*self.T)
@@ -228,7 +193,7 @@ class Binomial_Model():
         d_style = ''
         option_two = 'Call'
         K1 = self.K
-        n1 = self.N
+        T1 = self.T
         if self.style == 'Asian':
             d_style = self.double_style
             avg_what = self.avg_what
@@ -237,9 +202,9 @@ class Binomial_Model():
             d_style = self.double_style
             option_two = self.option_two
             K1 = self.K1
-            n1 = self.n1
+            T1 = self.T1
         
-        params= [self.style,self.option_type,self.tree,self.font_colors,self.N,self.u,self.probs[0],self.strikes,d_style,dividends,self.dt,option_two,K1,n1,avg_style,avg_what,self.S0,self.K,self.T,self.r,self.q,self.sigma,self.price,self.b_dates, self.div_type]
+        params= [self.style,self.option_type,self.asset_values,self.option_values,self.option_exercised,self.N,self.u,self.probs[0],self.strikes,d_style,dividends,self.dt,option_two,K1,T1,avg_style,avg_what,self.S0,self.K,self.T,self.r,self.q,self.sigma,self.price,self.b_dates, self.div_type]
         wb = print_excel(*params)
         return get_workbook_as_bytes(wb)
         
