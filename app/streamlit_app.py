@@ -9,7 +9,6 @@ def interval_dates(now,expire,freq,yrs):
         'Half-Yearly': 6,
         'Anually': 12
     }
-    
     start_date = now + timedelta(days=365*freq_dict[freq]/12)
     end_date = start_date + timedelta(days = yrs*365) 
     
@@ -75,13 +74,13 @@ def main():
     st.markdown(f"##### (American, Asian, Bermudan, Compound and European) style options")
     st.sidebar.title("Options Pricer")
     st.sidebar.markdown("**Made by:**")
-    st.sidebar.write(random.choice(['Acentio','Nkocie', 'Nkosenhle','Nkosembi','Nkosendala','Nkosentsha', 'Khathazile'])) 
+    st.sidebar.write(random.choice(['Nkosembi','Matsie','Siba','Diya', 'Adriaan','Levy','Rakhosa','Tamary','Thembeka','Neo'])) 
     st.sidebar.header("Model Inputs")
     
     style = st.sidebar.selectbox("Style", ['European','American', 'Asian', 'Bermudan', 'Compound'])
     option_type = st.sidebar.selectbox("Option Type", ['Call', 'Put'])
     N = st.sidebar.number_input("Number of Time Steps (N)", min_value=1, max_value=10000, value=12) # max_value to be increased...
-    T = st.sidebar.number_input("Time to Maturity (T)", min_value=0.0001, value=1.0)
+    T = st.sidebar.number_input("Time to Maturity (T)", min_value=0.001, value=1.0)
     
     avg_what, avg_method = 'Asset', 'Geometric'
     if style == 'Asian':
@@ -112,8 +111,8 @@ def main():
     st.markdown(f"About {double_style} options read [here.](https://corporatefinanceinstitute.com/resources/derivatives/american-vs-european-vs-bermudan-options/)")
     
     S = st.sidebar.number_input("Spot Price (S)", min_value=0.001, value=100.0)
-    K = st.sidebar.number_input("Strike Price (K)", min_value=0.01*S, value=99.0)
-    sigma = st.sidebar.number_input("Volatility (σ)", min_value=0.001,max_value=1.0, value=0.2)
+    K = st.sidebar.number_input("Strike Price (K)", min_value=0.001, value=99.0)
+    sigma = st.sidebar.number_input("Volatility (σ)", min_value=0.0001,max_value=1.0, value=0.2)
     r = st.sidebar.number_input("Risk-Free Rate (r)", min_value=0.0, value=0.06)
 
     bermudan_dates = np.array([datetime.now()], dtype='datetime64[D]' )
@@ -129,7 +128,7 @@ def main():
         get_divs(T)
         full_divs = full_divs if st.session_state.divs.size == 0 else st.session_state.divs
     else:
-        q = st.sidebar.number_input("Dividend Yield (q)", min_value=0.0,max_value = r, value=0.02)
+        q = st.sidebar.number_input("Dividend Yield (q)", min_value=0.0,max_value = r, value=0.00)
 
     st.sidebar.write("")
     
@@ -149,10 +148,10 @@ def main():
             else:
                 option.calculate_option_values()
 
-            st.markdown(f"#### Value of {style} {option_type}: {option.price:.6f}")
+            st.markdown(f"#### Value of {style} {option_type}: {option.price:.10f}")
             if style == 'European':
                 analytical_price = option.black_scholes()
-                st.markdown(f"#### Black_Scholes gives: {analytical_price:.6f}")
+                st.markdown(f"#### Black_Scholes gives: {analytical_price:.10f}")
             
         if download == 'Yes':
             with st.spinner('⌛ Saving...'):
@@ -163,7 +162,6 @@ def main():
                     file_name=file_name,
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
                 
-            
 if __name__ == '__main__':
     try:
         main()
