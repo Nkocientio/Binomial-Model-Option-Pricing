@@ -148,10 +148,11 @@ def main():
             else:
                 option.calculate_option_values()
 
-            st.markdown(f"#### Value of {style} {option_type}: {option.price:.10f}")
+            st.markdown(f"##### Value of {style} {option_type}: {option.price:.10f}")
             if style == 'European':
                 analytical_price = option.black_scholes()
-                st.markdown(f"#### Black_Scholes gives: {analytical_price:.10f}")
+                st.markdown(f"##### Black_Scholes gives: {analytical_price:.10f}")
+            st.markdown(f"FDM Model app:_ [here](https://fdm-model-option-pricing-k.streamlit.app/).")
             
         if download == 'Yes':
             with st.spinner('⌛ Saving...'):
