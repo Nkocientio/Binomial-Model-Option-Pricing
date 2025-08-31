@@ -152,7 +152,7 @@ def main():
             if style == 'European':
                 analytical_price = option.black_scholes()
                 st.markdown(f"##### Black_Scholes gives: {analytical_price:.10f}")
-            st.markdown(f"FDM Model app:_ [here](https://fdm-model-option-pricing-k.streamlit.app/).")
+            st.markdown(f"_FDM Model app:_ [here](https://fdm-model-option-pricing-k.streamlit.app/).")
             
         if download == 'Yes':
             with st.spinner('⌛ Saving...'):
